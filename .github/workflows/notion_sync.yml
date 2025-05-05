@@ -2,8 +2,8 @@ name: Notion → PostgreSQL Sync
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # runs daily at midnight UTC
-  workflow_dispatch:     # manual trigger
+    - cron: '0 0 * * *'   # every night at midnight UTC
+  workflow_dispatch:
 
 jobs:
   sync:
