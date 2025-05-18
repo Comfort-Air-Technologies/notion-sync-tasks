@@ -28,12 +28,13 @@ response = requests.post(
 data = response.json()
 
 conn = psycopg2.connect(
-    host="localhost",
-    port="5432",
-    user="postgres",
-    password="",
-    dbname="comfort_air_db"
+    host=os.getenv("PGHOST", "localhost"),
+    port=os.getenv("PGPORT", 5432),
+    user=os.getenv("PGUSER", "postgres"),
+    password=os.getenv("PGPASSWORD"),       # ← pulls from the DB_PASSWORD secret
+    dbname=os.getenv("PGDATABASE", "comfort_air_db"),
 )
+
 cur = conn.cursor()
 
 cur.execute("""
