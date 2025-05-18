@@ -1,58 +1,61 @@
-
-# Comfort Air Technologies - Notion Tasks Sync v2.0
+# Comfort Air Technologies - Notion Tasks Sync v2.1
 # Author: Doug Christy + AI Team
-# Description: Sync Notion Tasks -> PostgreSQL, designed for Comfort Air Technologies
-# Version: v2.0
+# Description: Sync Notion Tasks → PostgreSQL
+# Changelog v2.1: + pagination loop, password pulled from PG env
 
-import os
-import requests
-import psycopg2
+import os, requests, psycopg2
 from dotenv import load_dotenv
 
 load_dotenv(".env")
 
-NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+NOTION_TOKEN  = os.getenv("NOTION_TOKEN")
+DATABASE_ID   = os.getenv("NOTION_DATABASE_ID")
 
 headers = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
     "Notion-Version": "2022-06-28",
-    "Content-Type": "application/json"
+    "Content-Type":  "application/json",
 }
 
-response = requests.post(
-    f"https://api.notion.com/v1/databases/{DATABASE_ID}/query",
-    headers=headers
-)
+# ---------- NEW: pull every page, not just the first 100 ----------
+def fetch_all_pages():
+    url   = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
+    resp  = requests.post(url, headers=headers).json()
+    items = resp["results"]
+    while resp.get("has_more"):
+        resp  = requests.post(url, headers=headers,
+                              json={"start_cursor": resp["next_cursor"]}).json()
+        items.extend(resp["results"])
+    return items
+# ------------------------------------------------------------------
 
-data = response.json()
+results = fetch_all_pages()                           # ← replaces response/data
 
 conn = psycopg2.connect(
-    host=os.getenv("PGHOST", "localhost"),
-    port=os.getenv("PGPORT", 5432),
-    user=os.getenv("PGUSER", "postgres"),
-    password=os.getenv("PGPASSWORD"),       # ← pulls from the DB_PASSWORD secret
-    dbname=os.getenv("PGDATABASE", "comfort_air_db"),
+    host     = os.getenv("PGHOST", "localhost"),
+    port     = os.getenv("PGPORT", 5432),
+    user     = os.getenv("PGUSER", "postgres"),
+    password = os.getenv("PGPASSWORD"),               # pulled from secret
+    dbname   = os.getenv("PGDATABASE", "comfort_air_db"),
 )
-
 cur = conn.cursor()
 
 cur.execute("""
 CREATE TABLE IF NOT EXISTS notion_tasks (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    status TEXT,
-    due_date DATE,
-    last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  status TEXT,
+  due_date DATE,
+  last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """)
 
-for result in data.get("results", []):
-    props = result["properties"]
+for result in results:                                # ← iterate over full list
+    props   = result["properties"]
     task_id = result["id"]
-    name = props.get("Name", {}).get("title", [{}])[0].get("text", {}).get("content", "")
-    status = props.get("Status", {}).get("select", {}).get("name", "")
-    due = props.get("Due Date", {}).get("date", {}).get("start", None)
+    name    = props.get("Name", {}).get("title", [{}])[0].get("text", {}).get("content", "")
+    status  = props.get("Status", {}).get("select", {}).get("name", "")
+    due     = props.get("Due Date", {}).get("date", {}).get("start", None)
 
     cur.execute("""
     INSERT INTO notion_tasks (id, name, status, due_date)
@@ -68,4 +71,4 @@ conn.commit()
 cur.close()
 conn.close()
 
-print("✅ Notion tasks synced successfully.")
+print(f"✅ Notion tasks synced successfully. Rows processed: {len(results)}")
