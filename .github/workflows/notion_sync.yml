@@ -32,4 +32,4 @@ jobs:
           PGUSER:             ${{ secrets.DB_USER }}
           PGPASSWORD:         ${{ secrets.DB_PASSWORD }}
           PGDATABASE:         ${{ secrets.DB_NAME }}
-        run: python notion_sync_tasks.py
+        run: python sync_notion_tasks.py
