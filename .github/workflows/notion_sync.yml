@@ -2,7 +2,7 @@ name: Notion → PostgreSQL Sync
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # every night at midnight UTC
+    - cron: '0 0 * * *'        # every night at midnight UTC
   workflow_dispatch:
 
 jobs:
@@ -13,19 +13,21 @@ jobs:
       postgres:
         image: postgres:14
         env:
-          POSTGRES_USER: ${{ secrets.DB_USER }}
+          POSTGRES_USER:     ${{ secrets.DB_USER }}
           POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.DB_NAME }}
+          POSTGRES_DB:       ${{ secrets.DB_NAME }}
         ports:
           - 5432:5432
+        # ⚠️  secrets can’t be used here — use the literal user or
+        #     rely on the env variable that already exists INSIDE the container
         options: >-
-          --health-cmd "pg_isready -U ${{ secrets.DB_USER }}"
+          --health-cmd "pg_isready -U $$POSTGRES_USER"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     steps:
-      - name: Check out code
+      - name: Check out repo
         uses: actions/checkout@v3
 
       - name: Set up Python
@@ -38,7 +40,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Notion Sync
+      - name: Run Notion → Postgres sync
         env:
           NOTION_TOKEN:       ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
