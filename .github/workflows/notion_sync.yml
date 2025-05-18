@@ -9,23 +9,6 @@ jobs:
   sync:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER:     ${{ secrets.DB_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          POSTGRES_DB:       ${{ secrets.DB_NAME }}
-        ports:
-          - 5432:5432
-        # ⚠️  secrets can’t be used here — use the literal user or
-        #     rely on the env variable that already exists INSIDE the container
-        options: >-
-          --health-cmd "pg_isready -U $$POSTGRES_USER"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v3
@@ -44,8 +27,8 @@ jobs:
         env:
           NOTION_TOKEN:       ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-          PGHOST:             localhost
-          PGPORT:             5432
+          PGHOST:             ${{ secrets.SUPABASE_HOST }}
+          PGPORT:             ${{ secrets.SUPABASE_PORT }}
           PGUSER:             ${{ secrets.DB_USER }}
           PGPASSWORD:         ${{ secrets.DB_PASSWORD }}
           PGDATABASE:         ${{ secrets.DB_NAME }}
